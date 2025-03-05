@@ -9,12 +9,10 @@ from preprocess import preprocess_text
 app = Flask(__name__)
 CORS(app)
 
-# Load trained model and vectorizer
 model = joblib.load("../models/phishing_model.pkl")
 vectorizer = joblib.load("../models/vectorizer.pkl")
 
 def predict_email(text):
-    """Classifies the given email text as phishing or safe."""
     processed_text = preprocess_text(text)
     text_tfidf = vectorizer.transform([processed_text])
     prediction = model.predict(text_tfidf)
@@ -22,7 +20,6 @@ def predict_email(text):
 
 @app.route("/fetch_emails", methods=["GET"])
 def fetch_emails():
-    """Fetch unread Gmail messages using OAuth authentication and classify them."""
     creds = authenticate_gmail()
     service = googleapiclient.discovery.build("gmail", "v1", credentials=creds)
 
@@ -30,10 +27,10 @@ def fetch_emails():
     messages = results.get("messages", [])
 
     if not messages:
-        return jsonify({"message": "✅ No unread emails found."})
+        return jsonify({"message": " No unread emails found."})
 
     email_results = []
-    for msg in messages[:5]:  # Limit to 5 emails
+    for msg in messages[:5]: 
         msg_id = msg["id"]
         msg_data = service.users().messages().get(userId="me", id=msg_id, format="full").execute()
         
@@ -42,7 +39,6 @@ def fetch_emails():
 
         subject = next((h["value"] for h in headers if h["name"] == "Subject"), "No Subject")
 
-        # Extract email body
         body = ""
         if "data" in payload.get("body", {}):
             body = base64.urlsafe_b64decode(payload["body"]["data"]).decode("utf-8")
@@ -52,7 +48,6 @@ def fetch_emails():
                     body = base64.urlsafe_b64decode(part["body"]["data"]).decode("utf-8")
                     break
 
-        # Analyze email with AI model
         result = predict_email(body)
         email_results.append({"subject": subject, "body": body[:100], "prediction": result})
 
